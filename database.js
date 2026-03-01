@@ -2,7 +2,8 @@ const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 
 async function setupDb() {
-    // Ruta para el disco persistente en Render
+    // Configuración para Render (Usa el disco persistente /data)
+    // Si estás en local, usará el archivo en la raíz
     const dbPath = process.env.RENDER ? '/data/usuarios.db' : './usuarios.db';
 
     const db = await open({
@@ -10,7 +11,7 @@ async function setupDb() {
         driver: sqlite3.Database
     });
 
-    // Crear tabla de usuarios
+    // --- TABLA 1: GESTIÓN DE USUARIOS ---
     await db.exec(`
         CREATE TABLE IF NOT EXISTS usuarios (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -21,7 +22,8 @@ async function setupDb() {
         )
     `);
 
-    // Crear tabla de rutas (Control de Tráfico)
+    // --- TABLA 2: RADAR DE RUTAS Y TRÁFICO ---
+    // Aquí se guarda la Placa, el Conductor y todas las notas de llamadas
     await db.exec(`
         CREATE TABLE IF NOT EXISTS rutas (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,13 +35,16 @@ async function setupDb() {
         )
     `);
 
-    // Crear usuario admin inicial si no existe
+    // --- REGISTRO INICIAL (ADMIN) ---
+    // Verifica si ya existe el admin para no duplicarlo cada vez que reinicie
     const userExist = await db.get('SELECT * FROM usuarios WHERE username = ?', ['admin']);
     if (!userExist) {
         await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', 
         ['admin', '1234', 'admin']);
+        console.log("✔ Usuario maestro 'admin' configurado.");
     }
 
+    console.log("✔ Base de Datos YEGO Eco-T lista y vinculada.");
     return db;
 }
 

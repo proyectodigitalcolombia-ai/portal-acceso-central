@@ -1,9 +1,14 @@
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
+const fs = require('fs');
 
 async function setupDb() {
+    // Si estamos en Render, usamos la ruta del disco persistente /data
+    // Si estamos local, usamos la carpeta actual
+    const dbPath = process.env.RENDER ? '/data/usuarios.db' : './usuarios.db';
+
     const db = await open({
-        filename: './usuarios.db',
+        filename: dbPath,
         driver: sqlite3.Database
     });
 

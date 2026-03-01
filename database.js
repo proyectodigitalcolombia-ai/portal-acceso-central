@@ -1,146 +1,36 @@
-app.get('/dashboard', async (req, res) => {
-    const user = req.query.user;
-    if (!user || !db) return res.redirect('/');
-    
-    const userData = await db.get('SELECT * FROM usuarios WHERE username = ?', [user]);
-    let rutasActivas = [];
-    try {
-        rutasActivas = await db.all('SELECT * FROM rutas WHERE estado = "EN RUTA"');
-    } catch(e) { console.log("Tabla rutas aún no lista"); }
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
 
-    let listaUsuarios = userData?.rol === 'admin' ? await db.all('SELECT * FROM usuarios') : [];
+async function setupDb() {
+    const dbPath = process.env.RENDER ? '/data/usuarios.db' : './usuarios.db';
 
-    res.send(`
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-        <meta charset="UTF-8">
-        <script src="https://cdn.tailwindcss.com"></script>
-        <title>YEGO | Consola Central</title>
-    </head>
-    <body class="bg-[#f1f5f9] p-2 md:p-6 font-sans text-slate-800">
-        <div class="max-w-6xl mx-auto space-y-4">
-            
-            <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex items-center gap-3">
-                    <img src="/logo.jpg" class="h-10 object-contain" onerror="this.style.display='none'">
-                    <div>
-                        <p class="font-black text-purple-900 text-sm uppercase leading-none">YEGO Eco-T</p>
-                        <p class="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Consola Central</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-[10px] font-bold text-slate-400 hidden sm:block">Operador: ${user}</span>
-                    <a href="/" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all text-[10px] uppercase">Salir</a>
-                </div>
-            </div>
+    const db = await open({
+        filename: dbPath,
+        driver: sqlite3.Database
+    });
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                
-                <div class="lg:col-span-2 space-y-4">
-                    
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div>
-                                <h2 class="text-lg font-black text-slate-800 uppercase tracking-tighter italic">Radar de Rutas Activas</h2>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Seguimiento por Excepción</p>
-                            </div>
-                            <form action="/iniciar-ruta" method="POST" class="flex gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                                <input name="placa" placeholder="PLACA" class="bg-transparent p-2 text-xs font-black w-20 outline-none uppercase" required>
-                                <input name="conductor" placeholder="CONDUCTOR" class="bg-transparent p-2 text-xs font-bold w-32 outline-none uppercase" required>
-                                <button class="bg-emerald-500 text-white px-5 py-2 rounded-xl font-black text-xs hover:bg-purple-700 transition-all shadow-lg shadow-emerald-100 uppercase">Go</button>
-                            </form>
-                        </div>
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS usuarios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE,
+            password TEXT,
+            rol TEXT,
+            ultima_conexion TEXT
+        )
+    `);
 
-                        <div class="p-4 space-y-3 min-h-[300px]">
-                            ${rutasActivas.length === 0 ? `
-                                <div class="flex flex-col items-center justify-center py-20 opacity-30">
-                                    <p class="font-black text-slate-400 uppercase tracking-[0.3em]">No hay vehículos en ruta</p>
-                                </div>
-                            ` : ''}
-                            
-                            <div class="grid grid-cols-1 gap-3">
-                                ${rutasActivas.map(r => `
-                                    <div class="bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                                        <div class="bg-slate-50 px-4 py-3 flex justify-between items-center border-b border-slate-100">
-                                            <div class="flex items-center gap-3">
-                                                <div class="bg-purple-700 text-white px-3 py-1 rounded-lg font-black text-sm tracking-widest">${r.placa}</div>
-                                                <span class="text-[10px] font-black text-slate-400 uppercase">${r.hora_inicio}</span>
-                                            </div>
-                                            <form action="/finalizar-ruta" method="POST">
-                                                <input type="hidden" name="id" value="${r.id}">
-                                                <button class="bg-red-100 text-red-600 px-3 py-1.5 rounded-lg font-black text-[9px] hover:bg-red-600 hover:text-white transition-all uppercase">Llegada</button>
-                                            </form>
-                                        </div>
-                                        <div class="p-4 flex flex-col md:flex-row gap-4">
-                                            <div class="md:w-1/3">
-                                                <p class="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">Conductor</p>
-                                                <p class="text-xs font-bold text-slate-700 uppercase">${r.conductor}</p>
-                                            </div>
-                                            <div class="md:w-2/3 flex flex-col gap-2">
-                                                <form action="/guardar-nota" method="POST" class="flex gap-2">
-                                                    <input type="hidden" name="id" value="${r.id}">
-                                                    <input name="nueva_nota" placeholder="Reportar novedad de llamada..." class="flex-1 bg-slate-50 p-2 rounded-xl text-[10px] outline-none focus:ring-1 focus:ring-emerald-500" required>
-                                                    <button class="bg-slate-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase">Ok</button>
-                                                </form>
-                                                <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
-                                                    <p class="text-[9px] font-black text-emerald-700 mb-1 uppercase tracking-widest">Bitácora de Tráfico:</p>
-                                                    <div class="text-[10px] text-slate-600 leading-relaxed font-medium">
-                                                        ${r.notas || '<span class="opacity-50 italic">Esperando primer reporte...</span>'}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS rutas (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            placa TEXT, conductor TEXT, estado TEXT DEFAULT 'EN RUTA',
+            hora_inicio TEXT, notas TEXT DEFAULT ''
+        )
+    `);
 
-                    <div class="bg-purple-900 p-6 rounded-[2rem] shadow-xl text-white flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div>
-                            <h2 class="text-lg font-black uppercase tracking-tighter italic">Cargas Pendientes</h2>
-                            <p class="text-[10px] opacity-70 font-bold uppercase tracking-widest">Acceso plataforma 575 líneas</p>
-                        </div>
-                        <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" 
-                           class="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black text-xs hover:bg-emerald-400 transition-all shadow-lg uppercase">
-                           Abrir Módulo Logístico →
-                        </a>
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <h3 class="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest text-center">Mi Seguridad</h3>
-                        <form action="/cambiar-password" method="POST" class="space-y-3">
-                            <input type="hidden" name="username" value="${user}">
-                            <input name="new_pass" type="password" placeholder="NUEVA CLAVE" class="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-emerald-500" required>
-                            <button class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-600 transition-all">Actualizar Acceso</button>
-                        </form>
-                    </div>
-
-                    ${userData?.rol === 'admin' ? `
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <h2 class="text-[10px] font-black text-purple-900 mb-4 uppercase tracking-widest text-center italic underline decoration-emerald-500 underline-offset-4">Gestión de Equipo</h2>
-                        <form action="/crear-usuario" method="POST" class="space-y-2 mb-6">
-                            <input name="new_user" placeholder="USUARIO" class="w-full p-3 bg-slate-50 rounded-xl text-[10px] font-bold outline-none" required>
-                            <input name="new_pass" placeholder="CLAVE" class="w-full p-3 bg-slate-50 rounded-xl text-[10px] font-bold outline-none" required>
-                            <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-50">Registrar Funcionario</button>
-                        </form>
-                        <div class="space-y-2 max-h-48 overflow-y-auto">
-                            ${listaUsuarios.map(u => `
-                                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <span class="font-black text-slate-700 text-[10px] uppercase tracking-tight">${u.username}</span>
-                                    <span class="font-mono text-purple-600 text-[10px] font-bold">${u.password}</span>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-                    ` : ''}
-                </div>
-
-            </div>
-        </div>
-    </body>
-    </html>`);
-});
+    const userExist = await db.get('SELECT * FROM usuarios WHERE username = ?', ['admin']);
+    if (!userExist) {
+        await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', ['admin', '1234', 'admin']);
+    }
+    return db;
+}
+module.exports = setupDb;

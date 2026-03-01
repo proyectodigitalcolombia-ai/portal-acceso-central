@@ -110,4 +110,94 @@ app.get('/dashboard', async (req, res) => {
                     <div class="overflow-x-auto">
                         <table class="w-full text-left" id="tablaUsuarios">
                             <thead>
-                                <tr class
+                                <tr class="text-slate-400 text-[10px] font-black uppercase border-b">
+                                    <th class="py-5 px-4">Funcionario</th>
+                                    <th class="py-5 px-4">Acceso</th>
+                                    <th class="py-5 px-4">Última Actividad</th>
+                                    <th class="py-5 px-4 text-right">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-50">
+                                ${listaUsuarios.map(u => {
+                                    const esAdmin = u.username === 'admin';
+                                    return '<tr class="fila-usuario hover:bg-slate-50/50 transition-all">' +
+                                        '<td class="py-5 px-4 font-extrabold text-emerald-600 nombre-usuario italic">' + u.username + '</td>' +
+                                        '<td class="py-5 px-4 font-mono text-purple-900 font-bold">' + u.password + '</td>' +
+                                        '<td class="py-5 px-4 text-xs text-slate-400 font-bold uppercase">' + (u.ultima_conexion || 'Sin registros') + '</td>' +
+                                        '<td class="py-4 text-right">' +
+                                            (esAdmin ? '<span class="text-purple-700 font-black text-[10px] uppercase">Administrador</span>' : 
+                                            '<form action="/eliminar-usuario" method="POST" onsubmit="return confirm(\'¿Eliminar?\')">' +
+                                            '<input type="hidden" name="user_id" value="' + u.id + '">' +
+                                            '<button class="text-red-300 hover:text-red-600 font-black text-[10px] uppercase">Eliminar</button></form>') +
+                                        '</td>' +
+                                    '</tr>';
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        </div>
+
+        <script>
+            function filtrar() {
+                let filter = document.getElementById('buscador').value.toLowerCase();
+                let filas = document.getElementsByClassName('fila-usuario');
+                for (let i = 0; i < filas.length; i++) {
+                    let nombre = filas[i].querySelector('.nombre-usuario').innerText.toLowerCase();
+                    filas[i].style.display = nombre.includes(filter) ? "" : "none";
+                }
+            }
+            function exportarExcel() {
+                let table = document.getElementById("tablaUsuarios");
+                let url = 'data:application/vnd.ms-excel,' + encodeURIComponent(table.outerHTML);
+                let link = document.createElement("a");
+                link.download = "Reporte_YEGO.xls";
+                link.href = url;
+                link.click();
+            }
+        </script>
+    </body>
+    </html>`);
+});
+
+// --- RUTAS DE ACCIÓN ---
+
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        const user = await db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, password]);
+        if (user) {
+            const fecha = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota' });
+            await db.run('UPDATE usuarios SET ultima_conexion = ? WHERE username = ?', [fecha, username]);
+            res.redirect('/dashboard?user=' + user.username);
+        } else { res.send('<script>alert("Error"); window.location="/";</script>'); }
+    } catch (err) { res.status(500).send("Error"); }
+});
+
+app.post('/crear-usuario', async (req, res) => {
+    const { new_user, new_pass } = req.body;
+    try {
+        await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', [new_user, new_pass, 'funcionario']);
+        res.send('<script>alert("Creado"); window.history.back();</script>');
+    } catch (err) { res.send('<script>alert("Ya existe"); window.history.back();</script>'); }
+});
+
+app.post('/cambiar-password', async (req, res) => {
+    const { username, new_pass } = req.body;
+    try {
+        await db.run('UPDATE usuarios SET password = ? WHERE username = ?', [new_pass, username]);
+        res.send('<script>alert("Actualizado"); window.history.back();</script>');
+    } catch (err) { res.status(500).send("Error"); }
+});
+
+app.post('/eliminar-usuario', async (req, res) => {
+    const { user_id } = req.body;
+    try {
+        await db.run('DELETE FROM usuarios WHERE id = ?', [user_id]);
+        res.send('<script>alert("Eliminado"); window.history.back();</script>');
+    } catch (err) { res.status(500).send("Error"); }
+});
+
+app.listen(PORT, () => console.log("Servidor YEGO Online"));

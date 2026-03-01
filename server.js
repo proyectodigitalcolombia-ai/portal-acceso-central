@@ -36,44 +36,43 @@ app.get('/dashboard', async (req, res) => {
 
     res.send(`
     <script src="https://cdn.tailwindcss.com"></script>
-    <body class="bg-slate-100 p-6 md:p-10 font-sans">
-        <div class="max-w-5xl mx-auto">
+    <body class="bg-slate-100 p-6 md:p-10 font-sans text-slate-800">
+        <div class="max-w-6xl mx-auto">
             <div class="flex justify-between items-center mb-10">
                 <div>
-                    <h1 class="text-3xl font-bold text-slate-800">Panel Central</h1>
-                    <p class="text-slate-500 italic uppercase text-xs tracking-widest mt-1">Sesión: ${user} (${userData?.rol || 'Usuario'})</p>
+                    <h1 class="text-3xl font-bold text-slate-900">Panel Central</h1>
+                    <p class="text-slate-500 italic text-xs mt-1 uppercase tracking-widest font-semibold">Sesión: ${user} | Rol: ${userData?.rol}</p>
                 </div>
                 <a href="/" class="bg-red-100 text-red-600 px-4 py-2 rounded-lg font-bold hover:bg-red-200 transition-all">Cerrar Sesión</a>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="bg-white p-8 rounded-3xl shadow-lg border border-slate-200 lg:col-span-2">
+                    <h2 class="text-2xl font-bold mb-4">Módulo Operativo</h2>
+                    <p class="text-slate-500 mb-6">Plataforma principal de gestión logística v20.</p>
+                    <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold inline-block shadow-lg shadow-blue-200">ABRIR SISTEMA →</a>
+                </div>
+
                 <div class="bg-white p-8 rounded-3xl shadow-lg border border-slate-200">
-                    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center mb-4 text-blue-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 002-2h2a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path></svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-slate-800">Módulo Operativo</h2>
-                    <p class="text-slate-500 mt-2">Acceso a la plataforma principal de logística.</p>
-                    <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="inline-block mt-6 bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-700 shadow-lg shadow-blue-200">Abrir Sistema →</a>
+                    <h2 class="text-xl font-bold mb-4 text-slate-700 font-bold">Mi Seguridad</h2>
+                    <form action="/cambiar-password" method="POST" class="space-y-3">
+                        <input type="hidden" name="username" value="${user}">
+                        <input name="new_pass" type="password" placeholder="Nueva contraseña" class="w-full p-3 border rounded-xl text-sm" required>
+                        <button class="w-full bg-slate-800 text-white py-3 rounded-xl font-bold text-sm hover:bg-slate-700">ACTUALIZAR CLAVE</button>
+                    </form>
                 </div>
 
                 ${userData?.rol === 'admin' ? `
-                <div class="bg-white p-8 rounded-3xl shadow-lg border border-purple-100">
-                    <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center mb-4 text-purple-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    </div>
-                    <h2 class="text-2xl font-bold text-slate-800">Gestión de Personal</h2>
-                    <p class="text-slate-500 mt-2 mb-6">Registra nuevos funcionarios en el sistema.</p>
-                    <form action="/crear-usuario" method="POST" class="space-y-3">
-                        <input name="new_user" placeholder="Nombre de usuario" class="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-400" required>
-                        <input name="new_pass" type="text" placeholder="Contraseña nueva" class="w-full p-3 border rounded-xl text-sm outline-none focus:ring-2 focus:ring-purple-400" required>
-                        <button class="w-full bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-100">REGISTRAR FUNCIONARIO</button>
+                <div class="bg-purple-50 p-8 rounded-3xl shadow-lg border border-purple-100 lg:col-span-3 mt-4">
+                    <h2 class="text-2xl font-bold text-purple-800 mb-4 font-bold uppercase text-sm tracking-tighter">Administración de Equipo</h2>
+                    <form action="/crear-usuario" method="POST" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <input name="new_user" placeholder="Nombre de usuario" class="p-3 border rounded-xl text-sm" required>
+                        <input name="new_pass" placeholder="Contraseña inicial" class="p-3 border rounded-xl text-sm" required>
+                        <button class="bg-purple-600 text-white py-3 rounded-xl font-bold hover:bg-purple-700 shadow-lg shadow-purple-200 transition-all">REGISTRAR FUNCIONARIO</button>
                     </form>
                 </div>
-                ` : `
-                <div class="bg-slate-200 p-8 rounded-3xl border border-dashed border-slate-300 flex items-center justify-center">
-                    <p class="text-slate-500 font-medium italic text-center">Módulos adicionales restringidos por nivel de acceso.</p>
-                </div>
-                `}
+                ` : ''}
             </div>
         </div>
     </body>`);
@@ -90,19 +89,23 @@ app.post('/login', async (req, res) => {
         } else {
             res.send('<script>alert("Credenciales incorrectas"); window.location="/";</script>');
         }
-    } catch (err) {
-        res.status(500).send("Error");
-    }
+    } catch (err) { res.status(500).send("Error"); }
 });
 
 app.post('/crear-usuario', async (req, res) => {
     const { new_user, new_pass } = req.body;
     try {
         await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', [new_user, new_pass, 'funcionario']);
-        res.send('<script>alert("Usuario '+new_user+' Creado"); window.history.back();</script>');
-    } catch (err) {
-        res.send('<script>alert("Error: El usuario ya existe"); window.history.back();</script>');
-    }
+        res.send('<script>alert("Usuario '+new_user+' creado correctamente"); window.history.back();</script>');
+    } catch (err) { res.send('<script>alert("Error: Usuario duplicado"); window.history.back();</script>'); }
+});
+
+app.post('/cambiar-password', async (req, res) => {
+    const { username, new_pass } = req.body;
+    try {
+        await db.run('UPDATE usuarios SET password = ? WHERE username = ?', [new_pass, username]);
+        res.send('<script>alert("Contraseña actualizada con éxito"); window.history.back();</script>');
+    } catch (err) { res.send('<script>alert("Error al actualizar"); window.history.back();</script>'); }
 });
 
 app.listen(PORT, () => console.log("Servidor en línea"));

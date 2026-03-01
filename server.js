@@ -8,24 +8,21 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 let db;
-setupDb().then(database => { 
-    db = database; 
-    console.log("YEGO Eco-T: Base de datos conectada.");
-});
+setupDb().then(database => { db = database; });
 
 // --- VISTAS ---
 
 app.get('/', (req, res) => {
     res.send(`
     <script src="https://cdn.tailwindcss.com"></script>
-    <body class="bg-slate-900 flex items-center justify-center h-screen px-4">
-        <form action="/login" method="POST" class="bg-white p-6 rounded-3xl shadow-2xl w-full max-w-xs text-center border-b-4 border-emerald-500">
-            <img src="/logo.jpg" alt="YEGO" class="h-16 mx-auto mb-4 object-contain" onerror="this.style.display='none'">
-            <h2 class="text-[10px] font-black mb-6 text-slate-400 uppercase tracking-widest">Consola Logística</h2>
-            <div class="space-y-3">
-                <input name="username" placeholder="Usuario" class="w-full p-3 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" required>
-                <input name="password" type="password" placeholder="Contraseña" class="w-full p-3 bg-slate-50 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500" required>
-                <button class="w-full bg-purple-700 text-white py-3 rounded-xl font-bold hover:bg-emerald-600 transition-all text-xs uppercase tracking-widest">Entrar</button>
+    <body class="bg-slate-900 flex items-center justify-center h-screen px-4 font-sans">
+        <form action="/login" method="POST" class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-sm text-center border-b-8 border-purple-700">
+            <img src="/logo.jpg" alt="YEGO" class="h-20 mx-auto mb-6 object-contain" onerror="this.style.display='none'">
+            <h2 class="text-[11px] font-black mb-8 text-slate-400 uppercase tracking-[0.2em]">Plataforma Eco-T v2.0</h2>
+            <div class="space-y-4">
+                <input name="username" placeholder="Usuario" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-purple-500 border border-slate-100" required>
+                <input name="password" type="password" placeholder="Contraseña" class="w-full p-4 bg-slate-50 rounded-2xl text-sm outline-none focus:ring-2 focus:ring-purple-500 border border-slate-100" required>
+                <button class="w-full bg-purple-700 text-white py-4 rounded-2xl font-black hover:bg-emerald-500 transition-all text-xs uppercase tracking-widest shadow-lg shadow-purple-200">Acceder al Sistema</button>
             </div>
         </form>
     </body>`);
@@ -36,11 +33,7 @@ app.get('/dashboard', async (req, res) => {
     if (!user || !db) return res.redirect('/');
     
     const userData = await db.get('SELECT * FROM usuarios WHERE username = ?', [user]);
-    let rutasActivas = [];
-    try {
-        rutasActivas = await db.all('SELECT * FROM rutas WHERE estado = "EN RUTA"');
-    } catch(e) { console.log("Error cargando rutas"); }
-
+    let rutasActivas = await db.all('SELECT * FROM rutas WHERE estado = "EN RUTA"');
     let listaUsuarios = userData?.rol === 'admin' ? await db.all('SELECT * FROM usuarios') : [];
 
     res.send(`
@@ -48,123 +41,181 @@ app.get('/dashboard', async (req, res) => {
     <html lang="es">
     <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.tailwindcss.com"></script>
-        <title>YEGO | Consola Central</title>
+        <title>YEGO | Plataforma de Control</title>
+        <style>
+            .sidebar-link:hover { background: rgba(255,255,255,0.1); }
+            .active-link { background: #10b981 !important; }
+            ::-webkit-scrollbar { width: 5px; }
+            ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        </style>
     </head>
-    <body class="bg-[#f1f5f9] p-2 md:p-6 font-sans text-slate-800">
-        <div class="max-w-6xl mx-auto space-y-4">
+    <body class="bg-slate-50 font-sans flex h-screen overflow-hidden">
+
+        <aside class="w-20 lg:w-64 bg-purple-950 h-full flex flex-col text-white transition-all duration-300 shadow-2xl z-50">
+            <div class="p-6 flex items-center gap-3 border-b border-white/10">
+                <div class="bg-white p-1 rounded-lg h-10 w-10 flex items-center justify-center shrink-0">
+                    <img src="/logo.jpg" class="h-6 object-contain" onerror="this.style.display='none'">
+                </div>
+                <span class="font-black text-lg tracking-tighter hidden lg:block uppercase italic">YEGO <span class="text-emerald-400">Eco-T</span></span>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 mt-4">
+                <button onclick="showSection('radar')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all active-link" id="btn-radar">
+                    <span class="text-xl">📡</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Radar Tráfico</span>
+                </button>
+                <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all">
+                    <span class="text-xl">🚚</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Cargas (575)</span>
+                </a>
+                ${userData?.rol === 'admin' ? `
+                <button onclick="showSection('equipo')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all" id="btn-equipo">
+                    <span class="text-xl">👥</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Gestionar Equipo</span>
+                </button>
+                ` : ''}
+                <button onclick="showSection('config')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all" id="btn-config">
+                    <span class="text-xl">⚙️</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Seguridad</span>
+                </button>
+            </nav>
+
+            <div class="p-4 border-t border-white/10">
+                <a href="/" class="flex items-center gap-4 p-4 text-red-400 hover:bg-red-500/10 rounded-2xl transition-all font-black text-xs uppercase">
+                    <span>🚪</span> <span class="hidden lg:block">Cerrar Sesión</span>
+                </a>
+            </div>
+        </aside>
+
+        <main class="flex-1 flex flex-col overflow-hidden">
             
-            <div class="flex justify-between items-center bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-                <div class="flex items-center gap-3">
-                    <img src="/logo.jpg" class="h-10 object-contain" onerror="this.style.display='none'">
-                    <div>
-                        <p class="font-black text-purple-900 text-sm uppercase leading-none">YEGO Eco-T</p>
-                        <p class="text-[9px] text-emerald-500 font-bold uppercase tracking-widest">Control Central</p>
-                    </div>
+            <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8 shrink-0">
+                <div>
+                    <h1 id="page-title" class="text-xl font-black text-slate-800 uppercase italic tracking-tighter">Radar de Rutas</h1>
+                    <p class="text-[10px] text-emerald-500 font-bold uppercase tracking-[0.3em]">Operando como: ${user}</p>
                 </div>
-                <a href="/" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl font-black hover:bg-red-500 hover:text-white transition-all text-[10px] uppercase">Salir</a>
-            </div>
+                <div id="radar-form" class="hidden sm:block">
+                    <form action="/iniciar-ruta" method="POST" class="flex gap-2 bg-slate-100 p-2 rounded-2xl border border-slate-200">
+                        <input name="placa" placeholder="PLACA" class="bg-transparent px-3 text-xs font-black w-24 outline-none uppercase" required>
+                        <input name="conductor" placeholder="CONDUCTOR" class="bg-transparent px-3 text-xs font-bold w-40 outline-none uppercase" required>
+                        <button class="bg-purple-700 text-white px-6 py-2 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-500 transition-all shadow-md">Iniciar Viaje</button>
+                    </form>
+                </div>
+            </header>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="flex-1 overflow-y-auto p-4 lg:p-8">
                 
-                <div class="lg:col-span-2 space-y-4">
-                    <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="p-6 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4">
-                            <div>
-                                <h2 class="text-lg font-black text-slate-800 uppercase italic">Radar de Rutas Activas</h2>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase">Seguimiento por Excepción</p>
+                <section id="section-radar" class="space-y-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                        ${rutasActivas.length === 0 ? `
+                            <div class="col-span-full flex flex-col items-center justify-center py-32 opacity-20">
+                                <span class="text-6xl mb-4">📡</span>
+                                <p class="font-black text-slate-500 uppercase tracking-[0.5em]">Esperando señal de flota</p>
                             </div>
-                            <form action="/iniciar-ruta" method="POST" class="flex gap-2 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                                <input name="placa" placeholder="PLACA" class="bg-transparent p-2 text-xs font-black w-20 outline-none uppercase" required>
-                                <input name="conductor" placeholder="CONDUCTOR" class="bg-transparent p-2 text-xs font-bold w-32 outline-none uppercase" required>
-                                <button class="bg-emerald-500 text-white px-5 py-2 rounded-xl font-black text-xs hover:bg-purple-700 transition-all uppercase">Go</button>
-                            </form>
-                        </div>
-
-                        <div class="p-4 space-y-3 min-h-[200px]">
-                            ${rutasActivas.length === 0 ? '<div class="py-20 text-center opacity-30 font-black text-slate-400 uppercase tracking-widest text-xs">Sin vehículos en ruta</div>' : ''}
-                            ${rutasActivas.map(r => `
-                                <div class="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden border-l-4 border-l-purple-600">
-                                    <div class="bg-slate-50/50 px-4 py-3 flex justify-between items-center">
-                                        <div class="flex items-center gap-3">
-                                            <span class="bg-purple-900 text-white px-3 py-1 rounded-lg font-black text-sm">${r.placa}</span>
-                                            <span class="text-[10px] font-bold text-slate-400">${r.hora_inicio}</span>
-                                        </div>
-                                        <form action="/finalizar-ruta" method="POST">
-                                            <input type="hidden" name="id" value="${r.id}">
-                                            <button class="text-red-500 font-black text-[9px] uppercase hover:underline">Llegada</button>
-                                        </form>
+                        ` : ''}
+                        
+                        ${rutasActivas.map(r => `
+                            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-all group">
+                                <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-start">
+                                    <div>
+                                        <div class="bg-purple-900 text-white px-4 py-1.5 rounded-xl font-black text-lg tracking-[0.2em] mb-1 shadow-lg shadow-purple-100">${r.placa}</div>
+                                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">${r.hora_inicio} • EN RUTA</p>
                                     </div>
-                                    <div class="p-4 flex flex-col md:flex-row gap-4">
-                                        <div class="md:w-1/3">
-                                            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Conductor</p>
-                                            <p class="text-xs font-bold text-slate-700 uppercase">${r.conductor}</p>
-                                        </div>
-                                        <div class="md:w-2/3 flex flex-col gap-2">
-                                            <form action="/guardar-nota" method="POST" class="flex gap-2">
-                                                <input type="hidden" name="id" value="${r.id}">
-                                                <input name="nueva_nota" placeholder="Reportar novedad de llamada..." class="flex-1 bg-slate-50 p-2 rounded-xl text-[10px] outline-none focus:ring-1 focus:ring-emerald-500" required>
-                                                <button class="bg-slate-800 text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase">Ok</button>
-                                            </form>
-                                            <div class="bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/30 text-[10px] text-slate-600 leading-tight">
-                                                ${r.notas || '<span class="opacity-50 italic">Esperando reporte...</span>'}
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <form action="/finalizar-ruta" method="POST">
+                                        <input type="hidden" name="id" value="${r.id}">
+                                        <button class="bg-white text-red-500 p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm border border-slate-100">🏁</button>
+                                    </form>
                                 </div>
-                            `).join('')}
-                        </div>
+                                <div class="p-6 flex-1 space-y-4">
+                                    <div>
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Responsable</p>
+                                        <p class="text-sm font-bold text-slate-800 uppercase italic">${r.conductor}</p>
+                                    </div>
+                                    <div class="bg-emerald-50/50 rounded-2xl p-4 border border-emerald-100/30">
+                                        <p class="text-[9px] font-black text-emerald-600 uppercase mb-2">Bitácora de Novedades:</p>
+                                        <div class="text-[10px] text-slate-600 font-medium leading-relaxed max-h-24 overflow-y-auto pr-2">
+                                            ${r.notas || '<span class="italic opacity-50 text-[9px]">Sin reportes registrados hoy.</span>'}
+                                        </div>
+                                    </div>
+                                    <form action="/guardar-nota" method="POST" class="flex gap-2">
+                                        <input type="hidden" name="id" value="${r.id}">
+                                        <input name="nueva_nota" placeholder="Nueva novedad..." class="flex-1 bg-slate-100 p-3 rounded-xl text-[10px] outline-none border-none focus:ring-2 focus:ring-emerald-400" required>
+                                        <button class="bg-slate-900 text-white px-4 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-500 transition-all">Ok</button>
+                                    </form>
+                                </div>
+                            </div>
+                        `).join('')}
                     </div>
+                </section>
 
-                    <div class="bg-purple-900 p-6 rounded-[2rem] text-white flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div class="text-center md:text-left">
-                            <h2 class="text-lg font-black uppercase italic">Cargas Pendientes</h2>
-                            <p class="text-[10px] opacity-70 font-bold uppercase">Acceso plataforma externa 575</p>
-                        </div>
-                        <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" 
-                           class="bg-emerald-500 text-white px-8 py-3 rounded-2xl font-black text-xs hover:bg-emerald-400 transition-all uppercase">
-                           Abrir Módulo →
-                        </a>
-                    </div>
-                </div>
-
-                <div class="space-y-4">
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <h3 class="text-[10px] font-black text-slate-400 mb-4 uppercase tracking-widest text-center">Seguridad</h3>
-                        <form action="/cambiar-password" method="POST" class="space-y-3">
-                            <input type="hidden" name="username" value="${user}">
-                            <input name="new_pass" type="password" placeholder="NUEVA CLAVE" class="w-full p-3 bg-slate-50 rounded-xl text-xs font-bold outline-none border border-transparent focus:border-emerald-500" required>
-                            <button class="w-full bg-slate-900 text-white py-3 rounded-xl font-black text-[10px] uppercase hover:bg-emerald-600 transition-all">Actualizar</button>
+                <section id="section-equipo" class="hidden max-w-2xl mx-auto space-y-6">
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <h2 class="text-sm font-black text-purple-950 uppercase mb-6 tracking-widest italic border-l-4 border-emerald-400 pl-4">Registrar Nuevo Funcionario</h2>
+                        <form action="/crear-usuario" method="POST" class="grid grid-cols-2 gap-4">
+                            <input name="new_user" placeholder="Usuario" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none font-bold" required>
+                            <input name="new_pass" placeholder="Contraseña" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none font-bold" required>
+                            <button class="col-span-2 bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase hover:bg-purple-800 transition-all">Crear Acceso</button>
                         </form>
                     </div>
-
-                    ${userData?.rol === 'admin' ? `
-                    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
-                        <h2 class="text-[10px] font-black text-purple-900 mb-4 uppercase text-center italic decoration-emerald-500 underline underline-offset-4">Gestión de Equipo</h2>
-                        <form action="/crear-usuario" method="POST" class="space-y-2 mb-6">
-                            <input name="new_user" placeholder="USUARIO" class="w-full p-3 bg-slate-50 rounded-xl text-[10px] font-bold outline-none" required>
-                            <input name="new_pass" placeholder="CLAVE" class="w-full p-3 bg-slate-50 rounded-xl text-[10px] font-bold outline-none" required>
-                            <button class="w-full bg-emerald-500 text-white py-3 rounded-xl font-black text-[10px] uppercase">Crear</button>
-                        </form>
-                        <div class="space-y-2 max-h-48 overflow-y-auto">
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <h2 class="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Lista de Personal</h2>
+                        <div class="space-y-2">
                             ${listaUsuarios.map(u => `
-                                <div class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                    <span class="font-black text-slate-700 text-[10px] uppercase">${u.username}</span>
-                                    <span class="font-mono text-purple-600 text-[10px] font-bold">${u.password}</span>
+                                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="font-black text-slate-700 text-xs uppercase">${u.username}</span>
+                                    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg font-mono text-[10px] font-bold">${u.password}</span>
                                 </div>
                             `).join('')}
                         </div>
                     </div>
-                    ` : ''}
-                </div>
+                </section>
+
+                <section id="section-config" class="hidden max-w-md mx-auto">
+                    <div class="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-200 text-center">
+                        <div class="text-4xl mb-4">🔐</div>
+                        <h2 class="text-sm font-black text-slate-800 uppercase mb-6 italic">Actualizar Mi Clave</h2>
+                        <form action="/cambiar-password" method="POST" class="space-y-4">
+                            <input type="hidden" name="username" value="${user}">
+                            <input name="new_pass" type="password" placeholder="NUEVA CONTRASEÑA" class="w-full p-4 bg-slate-50 rounded-2xl text-xs font-bold outline-none border border-slate-100 focus:border-purple-500 text-center" required>
+                            <button class="w-full bg-slate-900 text-white py-4 rounded-2xl font-black text-[10px] uppercase hover:bg-emerald-600 transition-all">Guardar Nueva Clave</button>
+                        </form>
+                    </div>
+                </section>
 
             </div>
-        </div>
+        </main>
+
+        <script>
+            function showSection(id) {
+                // Ocultar todas las secciones
+                document.getElementById('section-radar').classList.add('hidden');
+                document.getElementById('section-equipo')?.classList.add('hidden');
+                document.getElementById('section-config').classList.add('hidden');
+                
+                // Quitar estilos activos de los botones
+                document.getElementById('btn-radar').classList.remove('active-link');
+                document.getElementById('btn-equipo')?.classList.remove('active-link');
+                document.getElementById('btn-config').classList.remove('active-link');
+
+                // Mostrar la sección elegida
+                document.getElementById('section-' + id).classList.remove('hidden');
+                document.getElementById('btn-' + id).classList.add('active-link');
+
+                // Cambiar título y barra superior
+                const titles = { 'radar': 'Radar de Rutas', 'equipo': 'Gestión de Equipo', 'config': 'Seguridad de Cuenta' };
+                document.getElementById('page-title').innerText = titles[id];
+                
+                if(id === 'radar') document.getElementById('radar-form').classList.remove('hidden');
+                else document.getElementById('radar-form').classList.add('hidden');
+            }
+        </script>
     </body>
     </html>`);
 });
 
-// --- LÓGICA DE RUTAS ---
+// --- LÓGICA DE RUTAS Y DATOS ---
 app.post('/iniciar-ruta', async (req, res) => {
     const { placa, conductor } = req.body;
     const hora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
@@ -186,12 +237,11 @@ app.post('/finalizar-ruta', async (req, res) => {
     res.redirect('back');
 });
 
-// --- LOGIN Y USUARIOS ---
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, password]);
     if (user) res.redirect('/dashboard?user=' + user.username);
-    else res.send('<script>alert("Error"); window.location="/";</script>');
+    else res.send('<script>alert("Error: Credenciales incorrectas"); window.location="/";</script>');
 });
 
 app.post('/crear-usuario', async (req, res) => {
@@ -204,4 +254,4 @@ app.post('/cambiar-password', async (req, res) => {
     res.redirect('back');
 });
 
-app.listen(PORT, () => console.log("Slim YEGO Online"));
+app.listen(PORT, () => console.log("YEGO Eco-T Online"));

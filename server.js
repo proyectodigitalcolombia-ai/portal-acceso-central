@@ -8,7 +8,10 @@ app.use(express.json());
 app.use(express.static(__dirname));
 
 let db;
-setupDb().then(database => { db = database; });
+setupDb().then(database => { 
+    db = database;
+    console.log("Base de datos YEGO conectada con éxito.");
+});
 
 // --- VISTAS ---
 
@@ -20,11 +23,10 @@ app.get('/', (req, res) => {
             <img src="/logo.jpg" alt="YEGO" class="h-16 mx-auto mb-8 object-contain" onerror="this.style.display='none'">
             <h2 class="text-xs font-bold mb-10 text-slate-500 uppercase tracking-[0.3em]">Acceso Corporativo Eco-T</h2>
             <div class="space-y-5">
-                <input name="username" placeholder="Usuario de Red" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-none text-sm text-slate-900 outline-none focus:border-slate-900" required>
+                <input name="username" placeholder="Usuario" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-none text-sm text-slate-900 outline-none focus:border-slate-900 uppercase" required>
                 <input name="password" type="password" placeholder="Contraseña" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-none text-sm text-slate-900 outline-none focus:border-slate-900" required>
                 <button class="w-full bg-slate-900 text-white py-4 rounded-none font-bold hover:bg-slate-700 transition-all text-xs uppercase tracking-widest shadow-lg">Entrar al Sistema</button>
             </div>
-            <p class="mt-8 text-[10px] text-slate-400 font-medium italic">Plataforma Logística YEGO &copy; 2026</p>
         </form>
     </body>`);
 });
@@ -33,9 +35,17 @@ app.get('/dashboard', async (req, res) => {
     const user = req.query.user;
     if (!user || !db) return res.redirect('/');
     
+    // Obtener datos del usuario logueado
     const userData = await db.get('SELECT * FROM usuarios WHERE username = ?', [user]);
+    
+    // Obtener rutas activas
     let rutasActivas = await db.all('SELECT * FROM rutas WHERE estado = "EN RUTA"');
-    let listaUsuarios = userData?.rol === 'admin' ? await db.all('SELECT * FROM usuarios') : [];
+    
+    // LÓGICA DE ADMINISTRADOR: Cargar lista de usuarios solo si tiene permiso
+    let listaUsuarios = [];
+    if (userData && userData.rol === 'admin') {
+        listaUsuarios = await db.all('SELECT username, password, rol FROM usuarios ORDER BY username ASC');
+    }
 
     res.send(`
     <!DOCTYPE html>
@@ -45,7 +55,7 @@ app.get('/dashboard', async (req, res) => {
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/lucide@latest"></script>
-        <title>YEGO | Control de Operaciones</title>
+        <title>YEGO | Control Panel</title>
         <style>
             .sidebar-link { border-left: 4px solid transparent; }
             .sidebar-link:hover { background: #1e293b; border-left: 4px solid #94a3b8; }
@@ -61,40 +71,38 @@ app.get('/dashboard', async (req, res) => {
                 <div class="bg-white p-1 rounded-sm h-8 w-8 flex items-center justify-center shrink-0">
                     <img src="/logo.jpg" class="h-5 object-contain" onerror="this.style.display='none'">
                 </div>
-                <span class="font-bold text-base tracking-widest hidden lg:block uppercase text-white">CONTROL <span class="text-emerald-500">PANEL</span></span>
+                <span class="font-bold text-base tracking-widest hidden lg:block uppercase text-white tracking-tighter">YEGO <span class="text-emerald-500 font-black italic">ECO-T</span></span>
             </div>
 
             <nav class="flex-1 p-0 mt-6 overflow-y-auto">
-                <p class="px-8 mb-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] hidden lg:block">Operaciones</p>
-                
-                <button onclick="showSection('radar')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all active-link" id="btn-radar text-sm">
+                <button onclick="showSection('radar')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all active-link" id="btn-radar">
                     <i data-lucide="radio" class="w-5 h-5"></i>
-                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Radar de Flota</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block text-sm">Radar de Flota</span>
                 </button>
 
-                <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all text-sm">
+                <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all">
                     <i data-lucide="truck" class="w-5 h-5 text-emerald-400"></i>
-                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Cargas Pendientes</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block text-sm">Cargas Pendientes</span>
                 </a>
 
-                <a href="https://yego-logistica-panel.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all text-sm">
+                <a href="https://yego-logistica-panel.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all">
                     <i data-lucide="clipboard-list" class="w-5 h-5 text-amber-400"></i>
-                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Registro Vehículos</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block text-sm">Registro Vehículos</span>
                 </a>
 
                 ${userData?.rol === 'admin' ? `
                 <div class="mt-8">
-                    <p class="px-8 mb-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] hidden lg:block">Administración</p>
-                    <button onclick="showSection('equipo')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all text-sm" id="btn-equipo">
-                        <i data-lucide="users" class="w-5 h-5"></i>
-                        <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Gestión de Personal</span>
+                    <p class="px-8 mb-4 text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] hidden lg:block">Admin Personal</p>
+                    <button onclick="showSection('equipo')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all" id="btn-equipo">
+                        <i data-lucide="users-2" class="w-5 h-5"></i>
+                        <span class="font-bold text-xs uppercase tracking-widest hidden lg:block text-sm">Gestión Personal</span>
                     </button>
                 </div>
                 ` : ''}
 
-                <button onclick="showSection('config')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all text-sm mt-auto" id="btn-config">
+                <button onclick="showSection('config')" class="sidebar-link w-full flex items-center gap-4 py-4 px-8 transition-all mt-auto" id="btn-config">
                     <i data-lucide="shield-check" class="w-5 h-5"></i>
-                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Seguridad</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block text-sm">Seguridad</span>
                 </button>
             </nav>
 
@@ -112,14 +120,14 @@ app.get('/dashboard', async (req, res) => {
                     <div class="h-8 w-[1px] bg-slate-200 mx-2"></div>
                     <div>
                         <h1 id="page-title" class="text-sm font-black text-slate-900 uppercase tracking-tight">Radar de Flota</h1>
-                        <p class="text-[9px] text-slate-400 font-bold uppercase">Sesión activa: ${user}</p>
+                        <p class="text-[9px] text-emerald-600 font-bold uppercase tracking-widest">Operando como: ${userData?.username}</p>
                     </div>
                 </div>
                 
-                <div id="radar-form" class="hidden md:block">
+                <div id="radar-form">
                     <form action="/iniciar-ruta" method="POST" class="flex items-center border border-slate-200 p-1 rounded-sm bg-slate-50">
                         <input name="placa" placeholder="PLACA" class="bg-transparent px-4 text-xs font-bold w-24 outline-none border-r border-slate-200 uppercase" required>
-                        <input name="conductor" placeholder="NOMBRE DEL CONDUCTOR" class="bg-transparent px-4 text-xs font-bold w-48 outline-none uppercase" required>
+                        <input name="conductor" placeholder="CONDUCTOR" class="bg-transparent px-4 text-xs font-bold w-48 outline-none uppercase" required>
                         <button class="bg-slate-900 text-white px-6 py-2 rounded-none font-bold text-[10px] uppercase hover:bg-emerald-600 transition-all">Despachar</button>
                     </form>
                 </div>
@@ -129,28 +137,25 @@ app.get('/dashboard', async (req, res) => {
                 
                 <section id="section-radar" class="space-y-6">
                     <div class="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-6">
-                        ${rutasActivas.length === 0 ? '<div class="col-span-full text-center py-40 border-2 border-dashed border-slate-200 rounded-none"><i data-lucide="inbox" class="w-12 h-12 mx-auto text-slate-200 mb-4"></i><p class="font-bold text-slate-400 uppercase text-xs tracking-widest">No hay vehículos en tránsito</p></div>' : ''}
+                        ${rutasActivas.length === 0 ? '<div class="col-span-full text-center py-40 border-2 border-dashed border-slate-200"><p class="font-bold text-slate-400 uppercase text-[10px] tracking-widest italic">A la espera de flota en tránsito...</p></div>' : ''}
                         ${rutasActivas.map(r => `
-                            <div class="bg-white border border-slate-200 rounded-none hover:shadow-lg transition-all flex flex-col">
+                            <div class="bg-white border border-slate-200 rounded-none flex flex-col">
                                 <div class="p-5 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
                                     <div class="bg-slate-900 text-white px-4 py-1.5 font-bold text-sm tracking-widest">${r.placa}</div>
                                     <form action="/finalizar-ruta" method="POST">
                                         <input type="hidden" name="id" value="${r.id}">
-                                        <button class="text-slate-400 hover:text-red-600 p-2 transition-all"><i data-lucide="check-square" class="w-5 h-5"></i></button>
+                                        <button class="text-slate-400 hover:text-red-600 p-2"><i data-lucide="check-square" class="w-5 h-5"></i></button>
                                     </form>
                                 </div>
                                 <div class="p-6 space-y-4">
-                                    <div class="flex items-center gap-3 text-slate-600 uppercase">
-                                        <i data-lucide="user" class="w-4 h-4"></i>
-                                        <p class="text-xs font-bold">${r.conductor}</p>
-                                    </div>
-                                    <div class="bg-slate-50 border-l-2 border-emerald-500 p-4 text-[10px] text-slate-500 font-medium">
-                                        ${r.notas || 'A la espera de reportes operativos.'}
+                                    <p class="text-xs font-black text-slate-700 uppercase">${r.conductor}</p>
+                                    <div class="bg-emerald-50 border-l-2 border-emerald-500 p-4 text-[10px] text-slate-500 font-medium">
+                                        ${r.notas || 'Sin reportes.'}
                                     </div>
                                     <form action="/guardar-nota" method="POST" class="flex gap-1 mt-4">
                                         <input type="hidden" name="id" value="${r.id}">
-                                        <input name="nueva_nota" placeholder="Reportar novedad..." class="flex-1 bg-white border border-slate-200 p-3 text-[10px] outline-none rounded-none focus:border-slate-900" required>
-                                        <button class="bg-slate-800 text-white px-4 text-[10px] font-bold uppercase hover:bg-emerald-600 transition-all">Enviar</button>
+                                        <input name="nueva_nota" placeholder="Reportar..." class="flex-1 bg-white border border-slate-200 p-2 text-[10px] outline-none rounded-none focus:border-slate-900 uppercase" required>
+                                        <button class="bg-slate-800 text-white px-4 text-[10px] font-bold uppercase">Ok</button>
                                     </form>
                                 </div>
                             </div>
@@ -158,31 +163,43 @@ app.get('/dashboard', async (req, res) => {
                     </div>
                 </section>
 
-                <section id="section-equipo" class="hidden max-w-4xl mx-auto space-y-8">
-                    <div class="bg-white p-8 border border-slate-200">
-                        <h2 class="text-xs font-black text-slate-900 uppercase mb-8 border-b border-slate-100 pb-4">Alta de Personal Operativo</h2>
+                <section id="section-equipo" class="hidden max-w-4xl mx-auto space-y-12">
+                    <div class="bg-white p-8 border border-slate-200 shadow-sm">
+                        <h2 class="text-xs font-black text-slate-900 uppercase mb-8 border-b pb-4 tracking-widest italic">Registrar Acceso Operativo</h2>
                         <form action="/crear-usuario" method="POST" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase">Nombre de Usuario</label>
-                                <input name="new_user" class="w-full p-4 bg-slate-50 border border-slate-200 text-xs outline-none focus:border-slate-900" required>
-                            </div>
-                            <div class="space-y-2">
-                                <label class="text-[10px] font-bold text-slate-400 uppercase">Contraseña de Acceso</label>
-                                <input name="new_pass" class="w-full p-4 bg-slate-50 border border-slate-200 text-xs outline-none focus:border-slate-900" required>
-                            </div>
-                            <button class="md:col-span-2 bg-slate-900 text-white py-4 font-bold text-xs uppercase hover:bg-emerald-700 transition-all">Finalizar Registro</button>
+                            <input name="new_user" placeholder="Usuario" class="p-4 bg-slate-50 border border-slate-200 text-xs outline-none font-bold uppercase" required>
+                            <input name="new_pass" placeholder="Contraseña" class="p-4 bg-slate-50 border border-slate-200 text-xs outline-none font-bold" required>
+                            <button class="md:col-span-2 bg-slate-900 text-white py-4 font-bold text-xs uppercase hover:bg-emerald-700 transition-all shadow-lg">Crear Cuenta de Personal</button>
                         </form>
+                    </div>
+
+                    <div class="bg-white p-8 border border-slate-200">
+                        <h2 class="text-xs font-black text-slate-400 uppercase mb-6 tracking-widest">Base de Datos de Personal</h2>
+                        <div class="space-y-3">
+                            ${listaUsuarios.map(u => `
+                                <div class="flex justify-between items-center p-4 bg-slate-50 border border-slate-100">
+                                    <div class="flex items-center gap-4">
+                                        <div class="bg-slate-200 p-2"><i data-lucide="user" class="w-4 h-4 text-slate-600"></i></div>
+                                        <span class="font-black text-slate-700 text-xs uppercase">${u.username}</span>
+                                    </div>
+                                    <div class="text-right">
+                                        <span class="bg-slate-900 text-white px-3 py-1 font-mono text-[10px] font-bold">${u.password}</span>
+                                        <span class="ml-2 text-[9px] font-bold text-slate-300 uppercase italic">${u.rol}</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
                     </div>
                 </section>
 
                 <section id="section-config" class="hidden max-w-md mx-auto">
-                    <div class="bg-white p-10 border border-slate-200 shadow-sm text-center">
-                        <i data-lucide="lock" class="w-10 h-10 mx-auto text-slate-200 mb-6"></i>
-                        <h2 class="text-xs font-black text-slate-900 uppercase mb-6 italic tracking-widest">Cambio de Credenciales</h2>
+                    <div class="bg-white p-10 border border-slate-200 text-center">
+                        <i data-lucide="shield-alert" class="w-10 h-10 mx-auto text-slate-200 mb-6"></i>
+                        <h2 class="text-xs font-black text-slate-900 uppercase mb-6 italic tracking-widest">Actualizar Seguridad</h2>
                         <form action="/cambiar-password" method="POST" class="space-y-4">
                             <input type="hidden" name="username" value="${user}">
-                            <input name="new_pass" type="password" placeholder="Nueva Contraseña" class="w-full p-4 bg-slate-50 border border-slate-200 text-xs font-bold outline-none text-center rounded-none" required>
-                            <button class="w-full bg-slate-900 text-white py-4 font-bold text-[10px] uppercase hover:bg-emerald-600 transition-all">Actualizar Seguridad</button>
+                            <input name="new_pass" type="password" placeholder="Nueva Contraseña" class="w-full p-4 bg-slate-50 border border-slate-200 text-xs font-bold outline-none text-center" required>
+                            <button class="w-full bg-slate-900 text-white py-4 font-bold text-[10px] uppercase hover:bg-emerald-600 transition-all">Guardar Cambios</button>
                         </form>
                     </div>
                 </section>
@@ -191,29 +208,22 @@ app.get('/dashboard', async (req, res) => {
         </main>
 
         <script>
-            // Inicializar Iconos Lucide
             lucide.createIcons();
 
             function showSection(id) {
-                // Secciones
-                const sections = ['radar', 'equipo', 'config'];
-                sections.forEach(s => {
-                    const el = document.getElementById('section-' + s);
-                    if(el) el.classList.add('hidden');
+                ['radar', 'equipo', 'config'].forEach(s => {
+                    const sec = document.getElementById('section-' + s);
+                    if(sec) sec.classList.add('hidden');
                     const btn = document.getElementById('btn-' + s);
                     if(btn) btn.classList.remove('active-link');
                 });
 
-                // Activar elegida
                 document.getElementById('section-' + id).classList.remove('hidden');
                 if(document.getElementById('btn-' + id)) document.getElementById('btn-' + id).classList.add('active-link');
 
-                // Títulos y Forms
-                const titles = { 'radar': 'Radar de Flota en Tiempo Real', 'equipo': 'Administración de Personal', 'config': 'Seguridad y Privacidad' };
+                const titles = { 'radar': 'Radar de Flota', 'equipo': 'Gestión de Personal', 'config': 'Seguridad de Cuenta' };
                 document.getElementById('page-title').innerText = titles[id];
-                document.getElementById('radar-form').classList.toggle('hidden', id !== 'radar');
-                
-                // Refrescar iconos
+                document.getElementById('radar-form').style.display = (id === 'radar') ? 'block' : 'none';
                 lucide.createIcons();
             }
         </script>
@@ -246,12 +256,16 @@ app.post('/finalizar-ruta', async (req, res) => {
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, password]);
-    if (user) res.redirect('/dashboard?user=' + user.username);
-    else res.send('<script>alert("Acceso Denegado: Credenciales Inválidas"); window.location="/";</script>');
+    if (user) {
+        res.redirect('/dashboard?user=' + user.username);
+    } else {
+        res.send('<script>alert("Acceso Inválido"); window.location="/";</script>');
+    }
 });
 
 app.post('/crear-usuario', async (req, res) => {
-    await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', [req.body.new_user, req.body.new_pass, 'funcionario']);
+    const { new_user, new_pass } = req.body;
+    await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', [new_user.toUpperCase(), new_pass, 'funcionario']);
     res.redirect('back');
 });
 
@@ -260,4 +274,4 @@ app.post('/cambiar-password', async (req, res) => {
     res.redirect('back');
 });
 
-app.listen(PORT, () => console.log("Servidor Logístico YEGO Operativo"));
+app.listen(PORT, () => console.log("Servidor Logístico YEGO Operativo con Gestión de Personal"));

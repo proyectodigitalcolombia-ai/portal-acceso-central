@@ -49,8 +49,6 @@ app.get('/dashboard', async (req, res) => {
             .active-link { background: #10b981 !important; }
             ::-webkit-scrollbar { width: 5px; }
             ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
-            /* Estilo para que el panel de vehículos use todo el espacio disponible */
-            #iframe-vehiculos { width: 100%; height: calc(100vh - 120px); border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         </style>
     </head>
     <body class="bg-slate-50 font-sans flex h-screen overflow-hidden">
@@ -63,7 +61,7 @@ app.get('/dashboard', async (req, res) => {
                 <span class="font-black text-lg tracking-tighter hidden lg:block uppercase italic">YEGO <span class="text-emerald-400">Eco-T</span></span>
             </div>
 
-            <nav class="flex-1 p-4 space-y-2 mt-4 overflow-y-auto">
+            <nav class="flex-1 p-4 space-y-2 mt-4">
                 <button onclick="showSection('radar')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all active-link" id="btn-radar">
                     <span class="text-xl">📡</span>
                     <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Radar Tráfico</span>
@@ -71,13 +69,13 @@ app.get('/dashboard', async (req, res) => {
 
                 <a href="https://plataforma-logistica-v20.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all">
                     <span class="text-xl">🚚</span>
-                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Cargas (575)</span>
+                    <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Cargas Pendientes</span>
                 </a>
 
-                <button onclick="showSection('vehiculos')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all" id="btn-vehiculos">
+                <a href="https://yego-logistica-panel.onrender.com/" target="_blank" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all">
                     <span class="text-xl">📋</span>
                     <span class="font-bold text-xs uppercase tracking-widest hidden lg:block">Registro Vehículos</span>
-                </button>
+                </a>
 
                 ${userData?.rol === 'admin' ? `
                 <button onclick="showSection('equipo')" class="sidebar-link w-full flex items-center gap-4 p-4 rounded-2xl transition-all" id="btn-equipo">
@@ -120,26 +118,46 @@ app.get('/dashboard', async (req, res) => {
                     <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                         ${rutasActivas.length === 0 ? '<div class="col-span-full text-center py-32 opacity-20"><p class="font-black text-slate-500 uppercase tracking-[0.5em]">Esperando señal de flota</p></div>' : ''}
                         ${rutasActivas.map(r => `
-                            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col">
+                            <div class="bg-white rounded-[2rem] shadow-sm border border-slate-100 overflow-hidden flex flex-col hover:shadow-xl transition-all group">
                                 <div class="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-start">
-                                    <div class="bg-purple-900 text-white px-4 py-1.5 rounded-xl font-black text-lg tracking-[0.2em] shadow-lg">${r.placa}</div>
-                                    <form action="/finalizar-ruta" method="POST"><input type="hidden" name="id" value="${r.id}"><button class="text-red-500 p-3 rounded-full border">🏁</button></form>
+                                    <div class="bg-purple-900 text-white px-4 py-1.5 rounded-xl font-black text-lg tracking-[0.2em] shadow-lg shadow-purple-100">${r.placa}</div>
+                                    <form action="/finalizar-ruta" method="POST"><input type="hidden" name="id" value="${r.id}"><button class="text-red-500 p-3 rounded-full hover:bg-red-500 hover:text-white transition-all shadow-sm">🏁</button></form>
                                 </div>
                                 <div class="p-6 space-y-4">
                                     <p class="text-sm font-bold text-slate-800 uppercase italic">${r.conductor}</p>
-                                    <div class="bg-emerald-50/50 rounded-2xl p-4 text-[10px] text-slate-600">${r.notas || 'Sin reportes.'}</div>
+                                    <div class="bg-emerald-50/50 rounded-2xl p-4 text-[10px] text-slate-600">${r.notas || 'Sin reportes registrados.'}</div>
+                                    <form action="/guardar-nota" method="POST" class="flex gap-2">
+                                        <input type="hidden" name="id" value="${r.id}">
+                                        <input name="nueva_nota" placeholder="Nueva novedad..." class="flex-1 bg-slate-100 p-3 rounded-xl text-[10px] outline-none" required>
+                                        <button class="bg-slate-900 text-white px-4 rounded-xl text-[10px] font-black uppercase hover:bg-emerald-500">Ok</button>
+                                    </form>
                                 </div>
                             </div>
                         `).join('')}
                     </div>
                 </section>
 
-                <section id="section-vehiculos" class="hidden h-full overflow-hidden">
-                    <iframe id="iframe-vehiculos" src="" title="Registro de Vehículos"></iframe>
-                </section>
-
                 <section id="section-equipo" class="hidden max-w-2xl mx-auto space-y-6">
-                   </section>
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <h2 class="text-sm font-black text-purple-950 uppercase mb-6 tracking-widest italic border-l-4 border-emerald-400 pl-4">Registrar Nuevo Funcionario</h2>
+                        <form action="/crear-usuario" method="POST" class="grid grid-cols-2 gap-4">
+                            <input name="new_user" placeholder="Usuario" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none font-bold" required>
+                            <input name="new_pass" placeholder="Contraseña" class="p-4 bg-slate-50 rounded-2xl text-xs outline-none font-bold" required>
+                            <button class="col-span-2 bg-emerald-500 text-white py-4 rounded-2xl font-black text-xs uppercase hover:bg-purple-800 transition-all">Crear Acceso</button>
+                        </form>
+                    </div>
+                    <div class="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-200">
+                        <h2 class="text-xs font-black text-slate-400 uppercase mb-4 tracking-widest">Lista de Personal</h2>
+                        <div class="space-y-2">
+                            ${listaUsuarios.map(u => `
+                                <div class="flex justify-between items-center p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <span class="font-black text-slate-700 text-xs uppercase">${u.username}</span>
+                                    <span class="bg-purple-100 text-purple-700 px-3 py-1 rounded-lg font-mono text-[10px] font-bold">${u.password}</span>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
 
                 <section id="section-config" class="hidden max-w-md mx-auto">
                     <div class="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-200 text-center">
@@ -157,53 +175,63 @@ app.get('/dashboard', async (req, res) => {
 
         <script>
             function showSection(id) {
-                // Ocultar todas las secciones y quitar activos
-                ['radar', 'vehiculos', 'equipo', 'config'].forEach(s => {
-                    const sec = document.getElementById('section-' + s);
-                    if(sec) sec.classList.add('hidden');
-                    const btn = document.getElementById('btn-' + s);
-                    if(btn) btn.classList.remove('active-link');
-                });
+                document.getElementById('section-radar').classList.add('hidden');
+                if(document.getElementById('section-equipo')) document.getElementById('section-equipo').classList.add('hidden');
+                document.getElementById('section-config').classList.add('hidden');
+                
+                document.getElementById('btn-radar').classList.remove('active-link');
+                if(document.getElementById('btn-equipo')) document.getElementById('btn-equipo').classList.remove('active-link');
+                document.getElementById('btn-config').classList.remove('active-link');
 
-                // Mostrar la seleccionada
                 document.getElementById('section-' + id).classList.remove('hidden');
                 document.getElementById('btn-' + id).classList.add('active-link');
 
-                const titles = { 
-                    'radar': 'Radar de Rutas', 
-                    'vehiculos': 'Registro de Vehículos y Seguridad', 
-                    'equipo': 'Gestión de Equipo', 
-                    'config': 'Seguridad de Cuenta' 
-                };
+                const titles = { 'radar': 'Radar de Rutas', 'equipo': 'Gestión de Equipo', 'config': 'Seguridad de Cuenta' };
                 document.getElementById('page-title').innerText = titles[id];
-
-                // Mostrar buscador solo en radar
                 document.getElementById('radar-form').classList.toggle('hidden', id !== 'radar');
-
-                // Carga diferida del Iframe con tu URL REAL
-                if(id === 'vehiculos') {
-                    const ifr = document.getElementById('iframe-vehiculos');
-                    if(!ifr.src) {
-                        ifr.src = "https://yego-logistica-panel.onrender.com/";
-                    }
-                }
             }
         </script>
     </body>
     </html>`);
 });
 
-// --- LÓGICA DE BASE DE DATOS (MANTENER IGUAL) ---
-app.post('/iniciar-ruta', async (req, res) => { /* ... */ });
-app.post('/guardar-nota', async (req, res) => { /* ... */ });
-app.post('/finalizar-ruta', async (req, res) => { /* ... */ });
+// --- LÓGICA DE DATOS ---
+app.post('/iniciar-ruta', async (req, res) => {
+    const { placa, conductor } = req.body;
+    const hora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    await db.run('INSERT INTO rutas (placa, conductor, hora_inicio) VALUES (?, ?, ?)', [placa.toUpperCase(), conductor.toUpperCase(), hora]);
+    res.redirect('back');
+});
+
+app.post('/guardar-nota', async (req, res) => {
+    const { id, nueva_nota } = req.body;
+    const hora = new Date().toLocaleString('es-CO', { timeZone: 'America/Bogota', hour: '2-digit', minute: '2-digit' });
+    const r = await db.get('SELECT notas FROM rutas WHERE id = ?', [id]);
+    const notasActualizadas = (r.notas || '') + `[${hora}] ${nueva_nota} <br>`;
+    await db.run('UPDATE rutas SET notas = ? WHERE id = ?', [notasActualizadas, id]);
+    res.redirect('back');
+});
+
+app.post('/finalizar-ruta', async (req, res) => {
+    await db.run('UPDATE rutas SET estado = "FINALIZADO" WHERE id = ?', [req.body.id]);
+    res.redirect('back');
+});
+
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await db.get('SELECT * FROM usuarios WHERE username = ? AND password = ?', [username, password]);
     if (user) res.redirect('/dashboard?user=' + user.username);
     else res.send('<script>alert("Error: Credenciales incorrectas"); window.location="/";</script>');
 });
-app.post('/crear-usuario', async (req, res) => { /* ... */ });
-app.post('/cambiar-password', async (req, res) => { /* ... */ });
 
-app.listen(PORT, () => console.log("YEGO Eco-T Online con Panel de Seguridad"));
+app.post('/crear-usuario', async (req, res) => {
+    await db.run('INSERT INTO usuarios (username, password, rol) VALUES (?, ?, ?)', [req.body.new_user, req.body.new_pass, 'funcionario']);
+    res.redirect('back');
+});
+
+app.post('/cambiar-password', async (req, res) => {
+    await db.run('UPDATE usuarios SET password = ? WHERE username = ?', [req.body.new_pass, req.body.username]);
+    res.redirect('back');
+});
+
+app.listen(PORT, () => console.log("YEGO Eco-T Online"));
